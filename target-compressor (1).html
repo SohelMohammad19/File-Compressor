@@ -1,0 +1,1225 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TargetCompress — Hit Any File Size</title>
+<link href="https://fonts.googleapis.com/css2?family=Clash+Display:wght@400;500;600;700&family=JetBrains+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0d0f14;
+    --panel: #13161e;
+    --card: #1a1d27;
+    --border: #252836;
+    --border2: #2e3246;
+    --accent: #00e5a0;
+    --accent-dim: rgba(0,229,160,0.12);
+    --accent-glow: rgba(0,229,160,0.25);
+    --warn: #f5a623;
+    --warn-dim: rgba(245,166,35,0.12);
+    --danger: #ff4f4f;
+    --danger-dim: rgba(255,79,79,0.10);
+    --text: #e8eaf2;
+    --muted: #666d85;
+    --muted2: #8891ab;
+  }
+
+  @import url('https://fonts.googleapis.com/css2?family=Clash+Display:wght@400;500;600;700&family=JetBrains+Mono:wght@300;400;500&display=swap');
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'JetBrains Mono', monospace;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 52px 20px 70px;
+    position: relative;
+  }
+
+  /* Animated bg blobs */
+  .bg-blob {
+    position: fixed;
+    border-radius: 50%;
+    filter: blur(80px);
+    opacity: 0.07;
+    pointer-events: none;
+    animation: drift 12s ease-in-out infinite alternate;
+  }
+  .blob1 { width: 400px; height: 400px; background: var(--accent); top: -100px; right: -100px; animation-delay: 0s; }
+  .blob2 { width: 300px; height: 300px; background: #6c63ff; bottom: -80px; left: -80px; animation-delay: 4s; }
+
+  @keyframes drift {
+    from { transform: translate(0, 0) scale(1); }
+    to   { transform: translate(30px, 20px) scale(1.08); }
+  }
+
+  /* Header */
+  .header {
+    text-align: center;
+    margin-bottom: 44px;
+    position: relative;
+    z-index: 1;
+  }
+
+  .logo {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: clamp(2.2rem, 6vw, 3.4rem);
+    font-weight: 500;
+    letter-spacing: -1px;
+    color: var(--text);
+    line-height: 1;
+  }
+
+  .logo span {
+    color: var(--accent);
+    position: relative;
+  }
+
+  .logo span::after {
+    content: '';
+    position: absolute;
+    bottom: 2px;
+    left: 0; right: 0;
+    height: 2px;
+    background: var(--accent);
+    opacity: 0.4;
+  }
+
+  .tagline {
+    margin-top: 10px;
+    font-size: 0.72rem;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+
+  /* Main wrapper */
+  .wrap {
+    width: 100%;
+    max-width: 560px;
+    position: relative;
+    z-index: 1;
+  }
+
+  /* Drop zone */
+  .drop-zone {
+    border: 1.5px dashed var(--border2);
+    border-radius: 14px;
+    padding: 52px 32px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.3s;
+    background: var(--panel);
+    position: relative;
+    overflow: hidden;
+  }
+
+  .drop-zone::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(ellipse at 50% 0%, rgba(0,229,160,0.05) 0%, transparent 70%);
+    opacity: 0;
+    transition: opacity 0.3s;
+  }
+
+  .drop-zone:hover::before,
+  .drop-zone.drag-over::before { opacity: 1; }
+  .drop-zone:hover, .drop-zone.drag-over {
+    border-color: var(--accent);
+    border-style: solid;
+  }
+
+  .drop-zone input[type="file"] {
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    cursor: pointer;
+    width: 100%;
+    height: 100%;
+  }
+
+  .upload-icon {
+    width: 60px; height: 60px;
+    margin: 0 auto 18px;
+    background: var(--card);
+    border: 1px solid var(--border2);
+    border-radius: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.6rem;
+    transition: transform 0.3s, box-shadow 0.3s;
+  }
+
+  .drop-zone:hover .upload-icon {
+    transform: translateY(-3px);
+    box-shadow: 0 8px 24px rgba(0,229,160,0.15);
+    border-color: var(--accent);
+  }
+
+  .drop-title {
+    font-size: 1rem;
+    font-weight: 500;
+    color: var(--text);
+    margin-bottom: 6px;
+  }
+
+  .drop-sub {
+    font-size: 0.72rem;
+    color: var(--muted);
+    line-height: 1.6;
+  }
+
+  .supported-types {
+    display: flex;
+    gap: 6px;
+    justify-content: center;
+    margin-top: 18px;
+    flex-wrap: wrap;
+  }
+
+  .type-pill {
+    padding: 3px 10px;
+    border-radius: 20px;
+    font-size: 0.62rem;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    border: 1px solid var(--border2);
+    color: var(--muted);
+    background: var(--card);
+    font-weight: 500;
+  }
+
+  /* ── FILE PANEL (shown after upload) ── */
+  .file-panel {
+    display: none;
+    background: var(--panel);
+    border: 1.5px solid var(--border2);
+    border-radius: 14px;
+    overflow: hidden;
+    animation: slideIn 0.35s cubic-bezier(0.34,1.56,0.64,1);
+  }
+
+  .file-panel.show { display: block; }
+
+  @keyframes slideIn {
+    from { opacity: 0; transform: translateY(12px) scale(0.98); }
+    to   { opacity: 1; transform: translateY(0) scale(1); }
+  }
+
+  /* Top: file info strip */
+  .file-strip {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 18px 22px;
+    border-bottom: 1px solid var(--border);
+    background: var(--card);
+  }
+
+  .file-icon-box {
+    width: 44px; height: 44px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.4rem;
+    background: var(--panel);
+    border: 1px solid var(--border2);
+    flex-shrink: 0;
+  }
+
+  .file-info-text { flex: 1; min-width: 0; }
+  .file-name-display {
+    font-size: 0.82rem;
+    font-weight: 500;
+    color: var(--text);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .file-type-display {
+    font-size: 0.68rem;
+    color: var(--muted);
+    margin-top: 3px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+  }
+
+  .btn-change {
+    background: transparent;
+    border: 1px solid var(--border2);
+    color: var(--muted2);
+    padding: 6px 14px;
+    border-radius: 6px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.68rem;
+    cursor: pointer;
+    transition: all 0.2s;
+    flex-shrink: 0;
+  }
+  .btn-change:hover { border-color: var(--accent); color: var(--accent); }
+
+  /* Size display section */
+  .size-section {
+    padding: 24px 22px 0;
+  }
+
+  .current-size-block {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 22px;
+  }
+
+  .size-label {
+    font-size: 0.65rem;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    color: var(--muted);
+    font-weight: 500;
+  }
+
+  .size-number {
+    font-size: 2.4rem;
+    font-weight: 400;
+    color: var(--text);
+    letter-spacing: -1px;
+    line-height: 1;
+  }
+
+  .size-unit {
+    font-size: 1rem;
+    color: var(--muted2);
+    margin-left: 4px;
+  }
+
+  /* Size breakdown bar */
+  .size-bar-wrap {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 14px 16px;
+    margin-bottom: 22px;
+  }
+
+  .size-bar-label-row {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 8px;
+  }
+
+  .size-bar-label-row span {
+    font-size: 0.65rem;
+    color: var(--muted);
+    letter-spacing: 1px;
+    text-transform: uppercase;
+  }
+
+  .bar-track {
+    height: 6px;
+    background: var(--border);
+    border-radius: 3px;
+    overflow: hidden;
+    position: relative;
+  }
+
+  .bar-fill {
+    height: 100%;
+    border-radius: 3px;
+    background: var(--accent);
+    transition: width 0.6s cubic-bezier(0.34,1.56,0.64,1);
+    box-shadow: 0 0 8px var(--accent-glow);
+  }
+
+  .bar-target-marker {
+    position: absolute;
+    top: -3px;
+    width: 2px;
+    height: 12px;
+    background: var(--warn);
+    border-radius: 1px;
+    transition: left 0.4s;
+    box-shadow: 0 0 6px rgba(245,166,35,0.6);
+  }
+
+  /* Target input section */
+  .target-section {
+    padding: 0 22px 22px;
+  }
+
+  .target-label-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 10px;
+  }
+
+  .target-label {
+    font-size: 0.65rem;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    color: var(--muted);
+    font-weight: 500;
+  }
+
+  .target-hint {
+    font-size: 0.65rem;
+    color: var(--muted);
+  }
+
+  .input-row {
+    display: flex;
+    gap: 10px;
+    align-items: stretch;
+  }
+
+  .target-input-wrap {
+    flex: 1;
+    position: relative;
+  }
+
+  .target-input {
+    width: 100%;
+    background: var(--card);
+    border: 1.5px solid var(--border2);
+    border-radius: 10px;
+    padding: 14px 50px 14px 16px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 1.1rem;
+    font-weight: 500;
+    color: var(--text);
+    outline: none;
+    transition: border-color 0.2s, box-shadow 0.2s;
+  }
+
+  .target-input:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px var(--accent-dim);
+  }
+
+  .target-input.warn-input { border-color: var(--warn); box-shadow: 0 0 0 3px var(--warn-dim); }
+  .target-input.danger-input { border-color: var(--danger); box-shadow: 0 0 0 3px var(--danger-dim); }
+
+  .unit-selector {
+    position: absolute;
+    right: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    background: var(--panel);
+    border: 1px solid var(--border2);
+    border-radius: 6px;
+    padding: 4px 8px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.7rem;
+    color: var(--muted2);
+    cursor: pointer;
+    outline: none;
+  }
+
+  .compress-btn {
+    background: var(--accent);
+    color: #0d0f14;
+    border: none;
+    border-radius: 10px;
+    padding: 14px 24px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.82rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+    white-space: nowrap;
+    letter-spacing: 0.5px;
+    flex-shrink: 0;
+  }
+
+  .compress-btn:hover { background: #00ffb3; transform: translateY(-1px); box-shadow: 0 6px 20px var(--accent-glow); }
+  .compress-btn:active { transform: translateY(0); }
+  .compress-btn:disabled { opacity: 0.3; cursor: not-allowed; transform: none; box-shadow: none; }
+
+  /* Validation message */
+  .validation-msg {
+    margin-top: 8px;
+    font-size: 0.7rem;
+    min-height: 18px;
+    transition: all 0.2s;
+  }
+  .validation-msg.ok { color: var(--accent); }
+  .validation-msg.warn { color: var(--warn); }
+  .validation-msg.bad { color: var(--danger); }
+
+  /* Progress section */
+  .progress-section {
+    padding: 0 22px 22px;
+    display: none;
+  }
+  .progress-section.show { display: block; }
+
+  .progress-bar-wrap {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 16px;
+  }
+
+  .progress-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+  }
+
+  .progress-status {
+    font-size: 0.72rem;
+    color: var(--muted2);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .mini-spinner {
+    width: 12px; height: 12px;
+    border: 1.5px solid var(--border2);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin 0.7s linear infinite;
+    flex-shrink: 0;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .progress-pct {
+    font-size: 0.72rem;
+    color: var(--accent);
+    font-weight: 500;
+  }
+
+  .progress-track {
+    height: 4px;
+    background: var(--border);
+    border-radius: 2px;
+    overflow: hidden;
+  }
+
+  .progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--accent), #00c4ff);
+    border-radius: 2px;
+    transition: width 0.3s;
+    box-shadow: 0 0 8px var(--accent-glow);
+  }
+
+  .iteration-log {
+    margin-top: 10px;
+    font-size: 0.65rem;
+    color: var(--muted);
+    font-style: italic;
+  }
+
+  /* Result section */
+  .result-section {
+    padding: 0 22px 22px;
+    display: none;
+  }
+  .result-section.show { display: block; }
+
+  .result-box {
+    border-radius: 10px;
+    overflow: hidden;
+    border: 1px solid;
+  }
+
+  .result-box.success { border-color: rgba(0,229,160,0.3); }
+  .result-box.partial { border-color: rgba(245,166,35,0.3); }
+  .result-box.failed  { border-color: rgba(255,79,79,0.25); }
+
+  .result-top {
+    padding: 12px 16px;
+    font-size: 0.68rem;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .result-top.success { background: rgba(0,229,160,0.07); color: var(--accent); }
+  .result-top.partial { background: rgba(245,166,35,0.07); color: var(--warn); }
+  .result-top.failed  { background: rgba(255,79,79,0.06); color: var(--danger); }
+
+  .result-body { padding: 16px; }
+
+  /* Three-column stats */
+  .stats-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 8px;
+    margin-bottom: 14px;
+  }
+
+  .stat-box {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 10px 12px;
+    text-align: center;
+  }
+
+  .stat-label { font-size: 0.6rem; text-transform: uppercase; letter-spacing: 1.5px; color: var(--muted); font-weight: 500; }
+  .stat-value { font-size: 1.05rem; font-weight: 500; margin-top: 4px; }
+  .stat-value.original { color: var(--muted2); }
+  .stat-value.result-green { color: var(--accent); }
+  .stat-value.result-warn { color: var(--warn); }
+  .stat-value.saved-text { color: var(--accent); }
+
+  .dl-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    width: 100%;
+    padding: 13px;
+    border-radius: 8px;
+    text-decoration: none;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.82rem;
+    font-weight: 500;
+    transition: all 0.2s;
+    color: #0d0f14;
+    background: var(--accent);
+    letter-spacing: 0.5px;
+  }
+
+  .dl-btn:hover { background: #00ffb3; box-shadow: 0 4px 16px var(--accent-glow); transform: translateY(-1px); }
+
+  .dl-btn.partial-dl { background: var(--warn); color: #1a1000; }
+  .dl-btn.partial-dl:hover { background: #ffc040; box-shadow: 0 4px 16px rgba(245,166,35,0.3); }
+
+  .try-again-btn {
+    width: 100%;
+    margin-top: 8px;
+    background: transparent;
+    border: 1px solid var(--border2);
+    color: var(--muted2);
+    padding: 10px;
+    border-radius: 8px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.75rem;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .try-again-btn:hover { border-color: var(--accent); color: var(--accent); }
+
+  .dl-notice {
+    text-align: center;
+    font-size: 0.72rem;
+    color: var(--accent);
+    padding: 8px 0 10px;
+    letter-spacing: 0.5px;
+  }
+  .dl-notice strong { color: var(--text); }
+
+  .result-note {
+    margin-top: 10px;
+    font-size: 0.68rem;
+    color: var(--muted);
+    line-height: 1.6;
+    padding: 10px 12px;
+    background: var(--card);
+    border-radius: 6px;
+    border: 1px solid var(--border);
+  }
+
+  /* Footer */
+  footer {
+    margin-top: 32px;
+    font-size: 0.65rem;
+    color: var(--muted);
+    text-align: center;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    position: relative;
+    z-index: 1;
+  }
+
+  @media (max-width: 480px) {
+    .stats-row { grid-template-columns: 1fr 1fr; }
+    .size-number { font-size: 1.8rem; }
+  }
+</style>
+</head>
+<body>
+
+<div class="bg-blob blob1"></div>
+<div class="bg-blob blob2"></div>
+
+<!-- Header -->
+<div class="header">
+  <div class="logo">Target<span>Compress</span></div>
+  <div class="tagline">Set a target size — we'll hit it</div>
+</div>
+
+<div class="wrap">
+
+  <!-- Step 1: Drop Zone -->
+  <div class="drop-zone" id="dropZone">
+    <div class="upload-icon">📂</div>
+    <div class="drop-title">Drop your file here</div>
+    <div class="drop-sub">Click to browse · Any file format welcome</div>
+    <div class="supported-types">
+      <span class="type-pill">PDF</span>
+      <span class="type-pill">JPEG</span>
+      <span class="type-pill">PNG</span>
+      <span class="type-pill">WEBP</span>
+      <span class="type-pill">DOCX</span>
+      <span class="type-pill">XLSX</span>
+      <span class="type-pill">PPTX</span>
+    </div>
+    <input type="file" id="fileInput">
+  </div>
+
+  <!-- Step 2: File Panel (shown after upload) -->
+  <div class="file-panel" id="filePanel">
+
+    <!-- File info strip -->
+    <div class="file-strip">
+      <div class="file-icon-box" id="fileIconBox">📄</div>
+      <div class="file-info-text">
+        <div class="file-name-display" id="fileNameDisplay">—</div>
+        <div class="file-type-display" id="fileTypeDisplay">—</div>
+      </div>
+      <button class="btn-change" onclick="resetTool()">↩ Change</button>
+    </div>
+
+    <!-- Current size display -->
+    <div class="size-section">
+      <div class="current-size-block">
+        <div>
+          <div class="size-label">Current File Size</div>
+          <div style="display:flex;align-items:baseline;gap:4px;margin-top:6px;">
+            <div class="size-number" id="sizeNumber">—</div>
+            <div class="size-unit" id="sizeUnit">KB</div>
+          </div>
+        </div>
+        <div style="text-align:right;">
+          <div class="size-label">File Type</div>
+          <div style="margin-top:6px;font-size:1rem;color:var(--accent);font-weight:500;" id="extDisplay">—</div>
+        </div>
+      </div>
+
+      <!-- Visual bar -->
+      <div class="size-bar-wrap">
+        <div class="size-bar-label-row">
+          <span>0</span>
+          <span id="barMaxLabel">—</span>
+        </div>
+        <div class="bar-track" id="barTrack">
+          <div class="bar-fill" id="barFill" style="width:100%"></div>
+          <div class="bar-target-marker" id="barMarker" style="display:none;"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Target size input -->
+    <div class="target-section">
+      <div class="target-label-row">
+        <span class="target-label">↓ Enter Target Size</span>
+        <span class="target-hint" id="targetHint">must be less than current size</span>
+      </div>
+      <div class="input-row">
+        <div class="target-input-wrap">
+          <input
+            type="number"
+            class="target-input"
+            id="targetInput"
+            placeholder="e.g. 15"
+            min="1"
+            oninput="onTargetInput()"
+          >
+          <select class="unit-selector" id="unitSelector" onchange="onTargetInput()">
+            <option value="KB">KB</option>
+            <option value="MB">MB</option>
+            <option value="B">B</option>
+          </select>
+        </div>
+        <button class="compress-btn" id="compressBtn" onclick="startCompression()" disabled>
+          Compress →
+        </button>
+      </div>
+      <div class="validation-msg" id="validationMsg"></div>
+    </div>
+
+    <!-- Progress -->
+    <div class="progress-section" id="progressSection">
+      <div class="progress-bar-wrap">
+        <div class="progress-top">
+          <div class="progress-status">
+            <div class="mini-spinner"></div>
+            <span id="progressStatus">Compressing...</span>
+          </div>
+          <div class="progress-pct" id="progressPct">0%</div>
+        </div>
+        <div class="progress-track">
+          <div class="progress-fill" id="progressFill" style="width:0%"></div>
+        </div>
+        <div class="iteration-log" id="iterationLog"></div>
+      </div>
+    </div>
+
+    <!-- Result -->
+    <div class="result-section" id="resultSection">
+      <!-- filled by JS -->
+    </div>
+
+  </div>
+</div>
+
+<footer>All processing happens in your browser — your files never leave your device</footer>
+
+<script>
+// Suppress known harmless library warnings
+const _origWarn = console.warn;
+console.warn = (...args) => {
+  if (args[0] && typeof args[0] === 'string' && args[0].includes('fake worker')) return;
+  _origWarn.apply(console, args);
+};
+
+let currentFile = null;
+let targetBytes = 0;
+
+const fileEmojis = {
+  pdf:'📕', docx:'📘', doc:'📘', xlsx:'📊', xls:'📊',
+  pptx:'📑', ppt:'📑', jpg:'🖼️', jpeg:'🖼️', png:'🖼️',
+  gif:'🎞️', webp:'🖼️', txt:'📝', csv:'📋', default:'📄'
+};
+
+// ── Setup ──────────────────────────────────────────────────────────────────
+document.getElementById('fileInput').addEventListener('change', e => {
+  if (e.target.files[0]) loadFile(e.target.files[0]);
+});
+
+const dz = document.getElementById('dropZone');
+dz.addEventListener('dragover', e => { e.preventDefault(); dz.classList.add('drag-over'); });
+dz.addEventListener('dragleave', () => dz.classList.remove('drag-over'));
+dz.addEventListener('drop', e => {
+  e.preventDefault(); dz.classList.remove('drag-over');
+  if (e.dataTransfer.files[0]) loadFile(e.dataTransfer.files[0]);
+});
+
+// ── Load file ──────────────────────────────────────────────────────────────
+function loadFile(file) {
+  currentFile = file;
+  const ext = file.name.split('.').pop().toLowerCase();
+  const sizeBytes = file.size;
+
+  // Show panel, hide drop zone
+  document.getElementById('dropZone').style.display = 'none';
+  document.getElementById('filePanel').classList.add('show');
+
+  // File strip
+  document.getElementById('fileIconBox').textContent = fileEmojis[ext] || fileEmojis.default;
+  document.getElementById('fileNameDisplay').textContent = cleanName(file.name);
+  document.getElementById('fileTypeDisplay').textContent = ext.toUpperCase() + ' file';
+  document.getElementById('extDisplay').textContent = '.' + ext.toUpperCase();
+
+  // Size display — pick best unit
+  const { value, unit } = bestUnit(sizeBytes);
+  document.getElementById('sizeNumber').textContent = value;
+  document.getElementById('sizeUnit').textContent = unit;
+  document.getElementById('barMaxLabel').textContent = formatSize(sizeBytes);
+
+  // Pre-select unit in dropdown to match
+  document.getElementById('unitSelector').value = unit === 'MB' ? 'MB' : unit === 'B' ? 'B' : 'KB';
+
+  // Bar (100% = current size)
+  document.getElementById('barFill').style.width = '100%';
+
+  // Reset
+  document.getElementById('targetInput').value = '';
+  document.getElementById('validationMsg').textContent = '';
+  document.getElementById('progressSection').classList.remove('show');
+  document.getElementById('resultSection').classList.remove('show');
+  document.getElementById('resultSection').innerHTML = '';
+  document.getElementById('compressBtn').disabled = true;
+  document.getElementById('barMarker').style.display = 'none';
+  document.getElementById('targetHint').textContent = 'must be less than current size';
+}
+
+function resetTool() {
+  currentFile = null;
+  document.getElementById('dropZone').style.display = '';
+  document.getElementById('filePanel').classList.remove('show');
+  document.getElementById('fileInput').value = '';
+}
+
+// ── Target input validation ────────────────────────────────────────────────
+function onTargetInput() {
+  const raw = parseFloat(document.getElementById('targetInput').value);
+  const unit = document.getElementById('unitSelector').value;
+  const input = document.getElementById('targetInput');
+  const msg = document.getElementById('validationMsg');
+  const btn = document.getElementById('compressBtn');
+  const marker = document.getElementById('barMarker');
+
+  if (!raw || isNaN(raw) || raw <= 0) {
+    input.className = 'target-input';
+    msg.textContent = '';
+    btn.disabled = true;
+    marker.style.display = 'none';
+    return;
+  }
+
+  const targetB = toBytes(raw, unit);
+  const currentB = currentFile.size;
+  targetBytes = targetB;
+
+  // Update marker on bar
+  const pct = Math.min(100, (targetB / currentB) * 100);
+  marker.style.display = 'block';
+  marker.style.left = pct + '%';
+
+  const reduction = Math.round((1 - targetB / currentB) * 100);
+
+  if (targetB >= currentB) {
+    input.className = 'target-input danger-input';
+    msg.className = 'validation-msg bad';
+    msg.textContent = '✕ Target must be smaller than current size (' + formatSize(currentB) + ')';
+    btn.disabled = true;
+  } else if (reduction > 95) {
+    input.className = 'target-input danger-input';
+    msg.className = 'validation-msg bad';
+    msg.textContent = '✕ Target too small — max ~95% reduction possible';
+    btn.disabled = true;
+  } else if (reduction > 80) {
+    input.className = 'target-input warn-input';
+    msg.className = 'validation-msg warn';
+    msg.textContent = `⚠ ${reduction}% reduction — result quality may be very low`;
+    btn.disabled = false;
+  } else {
+    input.className = 'target-input';
+    msg.className = 'validation-msg ok';
+    msg.textContent = `✓ Will reduce by ~${reduction}% (${formatSize(currentB)} → ${formatSize(targetB)})`;
+    btn.disabled = false;
+  }
+}
+
+// ── Compression engine ─────────────────────────────────────────────────────
+async function startCompression() {
+  if (!currentFile || !targetBytes) return;
+
+  document.getElementById('compressBtn').disabled = true;
+  document.getElementById('progressSection').classList.add('show');
+  document.getElementById('resultSection').classList.remove('show');
+  document.getElementById('resultSection').innerHTML = '';
+
+  const ext = currentFile.name.split('.').pop().toLowerCase();
+
+  try {
+    let result;
+    if (['jpg','jpeg','png','webp','gif'].includes(ext)) {
+      result = await compressImageToTarget(currentFile, ext, targetBytes);
+    } else if (ext === 'pdf') {
+      result = await compressPDFToTarget(currentFile, targetBytes);
+    } else if (['docx','doc','xlsx','xls','pptx','ppt'].includes(ext)) {
+      result = await compressZipToTarget(currentFile, targetBytes);
+    } else {
+      throw new Error(`File type .${ext.toUpperCase()} is not supported for compression.`);
+    }
+    showResult(result);
+  } catch(err) {
+    showFailed(err.message);
+  }
+
+  document.getElementById('compressBtn').disabled = false;
+}
+
+// ── Image: binary search for quality ──────────────────────────────────────
+async function compressImageToTarget(file, ext, targetB) {
+  const img = await loadImage(file);
+  const mime = ext === 'png' ? 'image/png' : ext === 'webp' ? 'image/webp' : 'image/jpeg';
+
+  setProgress(10, 'Loading image...');
+
+  let lo = 0.01, hi = 0.99, bestBlob = null, bestQ = null;
+  const MAX_ITER = 14;
+
+  for (let i = 0; i < MAX_ITER; i++) {
+    const mid = (lo + hi) / 2;
+    const pct = Math.round(10 + (i / MAX_ITER) * 80);
+    setProgress(pct, `Trying quality ${Math.round(mid * 100)}%...`, `Attempt ${i+1}/${MAX_ITER} · Current: ${formatSize(bestBlob?.size || file.size)}`);
+
+    const canvas = document.createElement('canvas');
+    canvas.width = img.naturalWidth; canvas.height = img.naturalHeight;
+    const ctx = canvas.getContext('2d');
+    if (mime === 'image/jpeg') { ctx.fillStyle = '#fff'; ctx.fillRect(0,0,canvas.width,canvas.height); }
+    ctx.drawImage(img, 0, 0);
+
+    const blob = await new Promise(res => canvas.toBlob(res, mime, mid));
+
+    if (blob.size <= targetB) {
+      bestBlob = blob; bestQ = mid;
+      lo = mid; // try higher quality
+    } else {
+      hi = mid; // need lower quality
+    }
+
+    if (Math.abs(blob.size - targetB) / targetB < 0.02) break; // within 2%
+  }
+
+  // If no result fits, take the smallest we can get
+  if (!bestBlob) {
+    const canvas = document.createElement('canvas');
+    canvas.width = img.naturalWidth; canvas.height = img.naturalHeight;
+    const ctx = canvas.getContext('2d');
+    ctx.drawImage(img, 0, 0);
+    bestBlob = await new Promise(res => canvas.toBlob(res, mime, 0.01));
+    bestQ = 0.01;
+  }
+
+  setProgress(100, 'Done!');
+
+  return {
+    blob: bestBlob,
+    originalSize: file.size,
+    achievedSize: bestBlob.size,
+    targetSize: targetB,
+    filename: file.name,
+    quality: Math.round(bestQ * 100)
+  };
+}
+
+// ── PDF: binary search on render scale ────────────────────────────────────
+async function compressPDFToTarget(file, targetB) {
+  await loadScript('https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js');
+  await loadScript('https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js');
+
+  const pdfjsLib = window['pdfjs-dist/build/pdf'];
+  pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+
+  setProgress(10, 'Loading PDF...');
+  const ab = await file.arrayBuffer();
+  const pdf = await pdfjsLib.getDocument({ data: ab }).promise;
+
+  const firstPage = await pdf.getPage(1);
+  const vp0 = firstPage.getViewport({ scale: 1 });
+  const ptW = vp0.width * 0.75, ptH = vp0.height * 0.75;
+  const orient = vp0.width > vp0.height ? 'landscape' : 'portrait';
+
+  let lo = 0.01, hi = 0.99, bestBlob = null, bestScale = null;
+  const MAX_ITER = 10;
+
+  for (let i = 0; i < MAX_ITER; i++) {
+    const mid = (lo + hi) / 2;
+    const renderScale = 0.3 + mid * 2.2;
+    const jpegQ = 0.1 + mid * 0.85;
+    const pct = Math.round(10 + (i / MAX_ITER) * 80);
+    setProgress(pct, `Rendering at scale ${renderScale.toFixed(2)}...`, `Attempt ${i+1}/${MAX_ITER}`);
+
+    const { jsPDF } = window.jspdf;
+    const outPdf = new jsPDF({ orientation: orient, unit: 'pt', format: [ptW, ptH] });
+
+    for (let p = 1; p <= pdf.numPages; p++) {
+      if (p > 1) outPdf.addPage([ptW, ptH], orient);
+      const page = await pdf.getPage(p);
+      const viewport = page.getViewport({ scale: renderScale });
+      const canvas = document.createElement('canvas');
+      canvas.width = viewport.width; canvas.height = viewport.height;
+      await page.render({ canvasContext: canvas.getContext('2d'), viewport }).promise;
+      const imgData = canvas.toDataURL('image/jpeg', jpegQ);
+      outPdf.addImage(imgData, 'JPEG', 0, 0, ptW, ptH);
+    }
+
+    const blob = outPdf.output('blob');
+
+    if (blob.size <= targetB) {
+      bestBlob = blob; bestScale = renderScale;
+      lo = mid;
+    } else {
+      hi = mid;
+    }
+
+    if (bestBlob && Math.abs(blob.size - targetB) / targetB < 0.03) break;
+  }
+
+  if (!bestBlob) {
+    // Minimum possible
+    const { jsPDF } = window.jspdf;
+    const outPdf = new jsPDF({ orientation: orient, unit: 'pt', format: [ptW, ptH] });
+    for (let p = 1; p <= pdf.numPages; p++) {
+      if (p > 1) outPdf.addPage([ptW, ptH], orient);
+      const page = await pdf.getPage(p);
+      const viewport = page.getViewport({ scale: 0.3 });
+      const canvas = document.createElement('canvas');
+      canvas.width = viewport.width; canvas.height = viewport.height;
+      await page.render({ canvasContext: canvas.getContext('2d'), viewport }).promise;
+      outPdf.addImage(canvas.toDataURL('image/jpeg', 0.05), 'JPEG', 0, 0, ptW, ptH);
+    }
+    bestBlob = outPdf.output('blob');
+  }
+
+  setProgress(100, 'Done!');
+  return { blob: bestBlob, originalSize: file.size, achievedSize: bestBlob.size, targetSize: targetB, filename: file.name };
+}
+
+// ── ZIP-based docs: re-compress ────────────────────────────────────────────
+async function compressZipToTarget(file, targetB) {
+  await loadScript('https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js');
+
+  setProgress(20, 'Reading document...');
+  const ab = await file.arrayBuffer();
+  const zip = await JSZip.loadAsync(ab);
+
+  setProgress(60, 'Re-compressing...');
+  // Try max compression (level 9)
+  const blob = await zip.generateAsync({
+    type: 'blob',
+    compression: 'DEFLATE',
+    compressionOptions: { level: 9 }
+  });
+
+  setProgress(100, 'Done!');
+  return { blob, originalSize: file.size, achievedSize: blob.size, targetSize: targetB, filename: file.name,
+    note: 'Documents are compressed by re-packing their internal ZIP structure. Exact target size may vary.' };
+}
+
+// ── UI updates ─────────────────────────────────────────────────────────────
+function setProgress(pct, status, log) {
+  document.getElementById('progressFill').style.width = pct + '%';
+  document.getElementById('progressPct').textContent = pct + '%';
+  document.getElementById('progressStatus').textContent = status;
+  if (log) document.getElementById('iterationLog').textContent = log;
+}
+
+function showResult({ blob, originalSize, achievedSize, targetSize, filename, quality, note }) {
+  document.getElementById('progressSection').classList.remove('show');
+  const sec = document.getElementById('resultSection');
+  sec.classList.add('show');
+
+  const url = URL.createObjectURL(blob);
+  const outName = cleanName(filename);
+  const saved = originalSize - achievedSize;
+  const savedPct = Math.round(saved / originalSize * 100);
+  const diff = Math.abs(achievedSize - targetSize);
+  const diffPct = Math.round(diff / targetSize * 100);
+  const hitTarget = achievedSize <= targetSize;
+
+  const statusClass = hitTarget ? 'success' : 'partial';
+  const statusLabel = hitTarget ? '✓ Target achieved!' : `≈ Best possible result (${formatSize(achievedSize)} achieved)`;
+
+  // Auto-download immediately
+  const autoLink = document.createElement('a');
+  autoLink.href = url;
+  autoLink.download = outName;
+  document.body.appendChild(autoLink);
+  autoLink.click();
+  document.body.removeChild(autoLink);
+
+  sec.innerHTML = `
+    <div class="result-box ${statusClass}">
+      <div class="result-top ${statusClass}">${statusLabel}</div>
+      <div class="result-body">
+        <div class="stats-row">
+          <div class="stat-box">
+            <div class="stat-label">Original</div>
+            <div class="stat-value original">${formatSize(originalSize)}</div>
+          </div>
+          <div class="stat-box">
+            <div class="stat-label">Target</div>
+            <div class="stat-value" style="color:var(--warn)">${formatSize(targetSize)}</div>
+          </div>
+          <div class="stat-box">
+            <div class="stat-label">Result</div>
+            <div class="stat-value ${hitTarget ? 'result-green' : 'result-warn'}">${formatSize(achievedSize)}</div>
+          </div>
+        </div>
+        <div class="stat-box" style="margin-bottom:12px;text-align:center;">
+          <div class="stat-label">Space Saved</div>
+          <div class="stat-value saved-text">${formatSize(saved)} &nbsp;·&nbsp; ${savedPct}% smaller</div>
+        </div>
+        <div class="dl-notice">⬇ Downloading as <strong>${outName}</strong>…</div>
+        <a class="dl-btn ${hitTarget ? '' : 'partial-dl'}" href="${url}" download="${outName}">
+          ⬇ Download Again
+        </a>
+        <button class="try-again-btn" onclick="retryWithDifferentTarget()">↩ Try a different target</button>
+        ${note ? `<div class="result-note">ℹ ${note}</div>` : ''}
+      </div>
+    </div>`;
+}
+
+function showFailed(msg) {
+  document.getElementById('progressSection').classList.remove('show');
+  const sec = document.getElementById('resultSection');
+  sec.classList.add('show');
+  sec.innerHTML = `
+    <div class="result-box failed">
+      <div class="result-top failed">✕ Error</div>
+      <div class="result-body" style="font-size:0.75rem;color:var(--danger);line-height:1.6;">${msg}</div>
+    </div>`;
+}
+
+function retryWithDifferentTarget() {
+  document.getElementById('resultSection').classList.remove('show');
+  document.getElementById('resultSection').innerHTML = '';
+  document.getElementById('progressSection').classList.remove('show');
+  document.getElementById('targetInput').value = '';
+  document.getElementById('validationMsg').textContent = '';
+  document.getElementById('compressBtn').disabled = true;
+  document.getElementById('barMarker').style.display = 'none';
+  document.getElementById('targetInput').focus();
+}
+
+// ── Utils ──────────────────────────────────────────────────────────────────
+function bestUnit(bytes) {
+  if (bytes >= 1024 * 1024) return { value: (bytes / 1024 / 1024).toFixed(2), unit: 'MB' };
+  if (bytes >= 1024) return { value: (bytes / 1024).toFixed(1), unit: 'KB' };
+  return { value: bytes.toString(), unit: 'B' };
+}
+
+function toBytes(val, unit) {
+  if (unit === 'MB') return Math.round(val * 1024 * 1024);
+  if (unit === 'KB') return Math.round(val * 1024);
+  return Math.round(val);
+}
+
+function formatSize(bytes) {
+  if (!bytes && bytes !== 0) return '—';
+  if (bytes < 1024) return bytes + ' B';
+  if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+  return (bytes / 1024 / 1024).toFixed(2) + ' MB';
+}
+
+function cleanName(name) {
+  const ext = name.split('.').pop();
+  let base = name.replace(/\.[^.]+$/, '');
+  if (base.includes('___')) { base = base.split('___').pop(); }
+  base = base.replace(/_[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/gi, '');
+  base = base.replace(/_V\d+$/i, '').replace(/_+/g, '_').replace(/^_|_$/g, '');
+  return (base || 'compressed') + '.' + ext;
+}
+
+function loadImage(file) {
+  return new Promise((res, rej) => {
+    const img = new Image();
+    const url = URL.createObjectURL(file);
+    img.onload = () => { URL.revokeObjectURL(url); res(img); };
+    img.onerror = rej;
+    img.src = url;
+  });
+}
+
+function loadScript(src) {
+  return new Promise((res, rej) => {
+    if (document.querySelector(`script[src="${src}"]`)) { res(); return; }
+    const s = document.createElement('script');
+    s.src = src; s.onload = res; s.onerror = rej;
+    document.head.appendChild(s);
+  });
+}
+</script>
+</body>
+</html>
